@@ -15,7 +15,7 @@ h: display help text
 ```sh
 git clone https://github.com/jSdCool/terminal-snake
 cd terminal-snake
-g++ -o snake.game -ptherad src/snake.cpp
+g++ -o snake.game -pthread src/snake.cpp
 ```
 #### windows:
 ```cmd
