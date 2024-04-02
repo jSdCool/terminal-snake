@@ -153,7 +153,7 @@ int main() {
 		for(size_t i=0;i<snake.size();i++){
 			screen[snake[i].y*width+snake[i].x] = 'S';
 		}
-		if(sp.x<=0 || sp.x >width || sp.y <= 0 || sp.y > height){
+		if(sp.x<=0 || sp.x >=width || sp.y <= 0 || sp.y >= height){
 			gameRunning = false;
 		}
 		msleep((heading % 2 ==0)?60:35);
@@ -176,7 +176,13 @@ void render(char current[] , char prev[]){
 				switch(current[index]){
 					case 'S':
 						gotoxy(x,y);
-						setBackgroundColor(GREEN);
+						if(x==0 || x == width-1 || y == 0 || y == height-1){
+							setBackgroundColor(BROWN);
+						}else if(x <= 2 || x >= width-3 || y <= 3 || y >= height-3){
+							setBackgroundColor(YELLOW);
+						}else{
+							setBackgroundColor(GREEN);
+						}
 						cout << " ";
 						break;
 					case 'A':
