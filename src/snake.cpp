@@ -206,16 +206,16 @@ void * inputThread(void * args){
 	while(gameRunning){
 		int key = getkey();
 		int facAx = *headingDirection%2;
-		if(key == KEY_UP && facAx==1){
+		if((key == KEY_UP || key =='w' || key == 'W')&& facAx==1){
 			*headingDirection=0;
 		}
-		if(key == KEY_RIGHT  && facAx==0){
+		if((key == KEY_RIGHT || key =='d' || key == 'D')  && facAx==0){
 			*headingDirection=1;
 		}
-		if(key == KEY_DOWN && facAx==1){
+		if((key == KEY_DOWN || key =='s' || key == 'S') && facAx==1){
 			*headingDirection=2;
 		}
-		if(key == KEY_LEFT  && facAx==0){
+		if((key == KEY_LEFT || key =='a' || key == 'A')  && facAx==0){
 			*headingDirection=3;
 		}
 		if(key == 'p' || key == 'P'){
@@ -227,7 +227,7 @@ void * inputThread(void * args){
 		if(key == 'h' || key == 'H'){
 			resetColor();
 			gotoxy(1,1);
-			cout << "Arrow Keys - change direction" << endl << "P - pause" << endl <<"Q - quit"<<endl<<"H - display this message";
+			cout << "Arrow Keys / WASD - change direction" << endl << "P - pause" << endl <<"Q - quit"<<endl<<"H - display this message";
 		}
 	}
 	return nullptr;

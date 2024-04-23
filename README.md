@@ -2,7 +2,7 @@
 a simple game of snake that can be played in your computer terminal
 
 ### controls:
-arrow keys: change direction  
+arrow keys/ WASD: change direction  
 q: quit   
 p: pause   
 h: display help text  
