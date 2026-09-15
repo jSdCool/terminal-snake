@@ -1,4 +1,4 @@
-
+.idea
 .cproject
 .project
 .settings/language.settings.xml
@@ -6,3 +6,4 @@
 .settings/org.eclipse.core.resources.prefs
 Debug/snake.exe
 Debug/src/snake.o
+build/
