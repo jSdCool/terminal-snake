@@ -64,7 +64,7 @@ int main() {
 
 	screen[apple.y*width+apple.x] = 'A';
 	screen[p.y*width+p.x] = 'S';
-	cls();
+	enableAlternateBuffer();
 	hidecursor();
 
 	inputThread = thread(&inputThreadFunction,&heading);
@@ -150,7 +150,7 @@ int main() {
 
 	showcursor();
 	resetColor();
-	gotoxy(2,height -2);
+	disableAlternateBuffer();
 	cout << "GAME OVER!! Score:" <<snake.size() << endl;
 	cout << "Press any key to continue...";
 	cout.flush();
