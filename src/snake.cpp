@@ -225,10 +225,3 @@ void inputThreadFunction(void * args){
 		}
 	}
 }
-
-#ifdef _WIN32
-	DWORD WINAPI winThread(LPVOID params){
-		inputThread((void* )params);
-		return 0;
-	}
-#endif
