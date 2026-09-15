@@ -2,18 +2,15 @@
 #include "rogueutil.h"
 #include "stopHandler.h"
 #include <vector>
-#include <cstdbool>
-#ifdef _WIN32
-	#include <windows.h>
-#else
-	#include <pthread.h>
-#endif
+#include <thread>
 using namespace std;
 using namespace rogueutil;
 
-int width;
-int height;
-bool gameRunning=true,paused=false;
+static int width;
+static int height;
+static volatile bool gameRunning=true;
+static bool paused=false;
+thread inputThread;
 
 typedef struct position{
 	int x;
@@ -23,14 +20,10 @@ typedef struct position{
 void handleStop(){
 	gameRunning=false;
 	//handle stop here
-	resetColor();
-	cls();
-	showcursor();
-
 }
 
 void render(char current[] , char prev[]);
-void * inputThread(void *);
+void inputThreadFunction(void *);
 #ifdef _WIN32
 	DWORD WINAPI winThread(LPVOID params);
 #endif
@@ -44,7 +37,7 @@ int main() {
 		return EXIT_FAILURE;
 	}
 	saveDefaultColor();//save current terminal colors
-	stopHandler::setContrlCHandler(&handleStop);//register the handler for ctrl c
+	stopHandler::setContrlCHandler(&handleStop,false);//register the handler for ctrl c
 	setConsoleTitle("SNAKE!!");
 
 	//Microsoft visual c++ compiler does not allow arrays to be defined with variables
@@ -73,13 +66,9 @@ int main() {
 	screen[p.y*width+p.x] = 'S';
 	cls();
 	hidecursor();
-	#ifdef _WIN32
-		DWORD myThreadID;
-		CreateThread(0, 0, winThread, &heading, 0, &myThreadID);
-	#else
-		pthread_t inputThreadObject;
-		pthread_create(&inputThreadObject, nullptr,inputThread,(void *)&heading);
-	#endif
+
+	inputThread = thread(&inputThreadFunction,&heading);
+
 	while(gameRunning){
 		if(paused){
 			msleep(20);
@@ -159,10 +148,14 @@ int main() {
 		msleep((heading % 2 ==0)?60:35);
 	}
 
-	resetColor();
 	showcursor();
+	resetColor();
 	gotoxy(2,height -2);
 	cout << "GAME OVER!! Score:" <<snake.size() << endl;
+	cout << "Press any key to continue...";
+	cout.flush();
+	inputThread.join();
+	cout << endl;
 	//cout << snake[0].x <<" " << snake[0].y << endl;
 
 }
@@ -199,9 +192,10 @@ void render(char current[] , char prev[]){
 			}
 		}
 	}
+	cout.flush();
 }
 
-void * inputThread(void * args){
+void inputThreadFunction(void * args){
 	int * headingDirection= (int*)args;
 	while(gameRunning){
 		int key = getkey();
@@ -230,7 +224,6 @@ void * inputThread(void * args){
 			cout << "Arrow Keys / WASD - change direction" << endl << "P - pause" << endl <<"Q - quit"<<endl<<"H - display this message";
 		}
 	}
-	return nullptr;
 }
 
 #ifdef _WIN32
