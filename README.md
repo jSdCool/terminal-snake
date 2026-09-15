@@ -8,7 +8,7 @@ p: pause
 h: display help text  
 
 ### used libraries: 
-[Rogueutil](https://github.com/sakhmatd/rogueutil)
+[Rogueutil](https://github.com/jSdCool/rogueutil)
 
 ### build instruction:
 #### linux:

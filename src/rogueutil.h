@@ -223,6 +223,18 @@ static const RUTIL_STRING ANSI_BACKGROUND_BLUE    = "\033[44m";
 static const RUTIL_STRING ANSI_BACKGROUND_MAGENTA = "\033[45m";
 static const RUTIL_STRING ANSI_BACKGROUND_CYAN    = "\033[46m";
 static const RUTIL_STRING ANSI_BACKGROUND_WHITE   = "\033[47m";
+//for some reason half the background colors were not present, so i added them
+static const RUTIL_STRING ANSI_BACKGROUND_BRIGHT_BLACK   = "\033[100m";
+static const RUTIL_STRING ANSI_BACKGROUND_BRIGHT_RED     = "\033[101m";
+static const RUTIL_STRING ANSI_BACKGROUND_BRIGHT_GREEN   = "\033[102m";
+static const RUTIL_STRING ANSI_BACKGROUND_BRIGHT_YELLOW  = "\033[103m";
+static const RUTIL_STRING ANSI_BACKGROUND_BRIGHT_BLUE    = "\033[104m";
+static const RUTIL_STRING ANSI_BACKGROUND_BRIGHT_MAGENTA = "\033[105m";
+static const RUTIL_STRING ANSI_BACKGROUND_BRIGHT_CYAN    = "\033[106m";
+static const RUTIL_STRING ANSI_BACKGROUND_BRIGHT_WHITE   = "\033[107m";
+//more ansi useful sequences!
+static const RUTIL_STRING ANSI_ENABLE_ALTERNATE_BUFFER = "\033[?1049h";
+static const RUTIL_STRING ANSI_DISABLE_ALTERNATE_BUFFER = "\033[?1049l";
 /* Remaining colors not supported as background colors */
 
 /**
@@ -296,7 +308,10 @@ int
 getkey(void)
 {
 #ifndef _WIN32
-	int cnt = kbhit(); /* for ANSI escapes processing */
+	int cnt = 0; /* for ANSI escapes processing */
+	while(cnt == 0){//sometimes when an input happens this returns 0, so just check again until it does not
+		cnt = kbhit();
+	}
 #endif
 	int k = getch();
 	switch(k) {
@@ -467,6 +482,23 @@ getANSIBgColor(const int c)
 		return ANSI_BACKGROUND_YELLOW;
 	case GREY   :
 		return ANSI_BACKGROUND_WHITE;
+	//for some reason half the background colors were not present, so i added them
+	case DARKGREY    :
+		return ANSI_BACKGROUND_BRIGHT_BLACK;
+	case LIGHTBLUE   :
+		return ANSI_BACKGROUND_BRIGHT_BLUE;
+	case LIGHTGREEN  :
+		return ANSI_BACKGROUND_BRIGHT_GREEN;
+	case LIGHTCYAN   :
+		return ANSI_BACKGROUND_BRIGHT_CYAN;
+	case LIGHTRED    :
+		return ANSI_BACKGROUND_BRIGHT_RED;
+	case LIGHTMAGENTA:
+		return ANSI_BACKGROUND_BRIGHT_MAGENTA;
+	case YELLOW      :
+		return ANSI_BACKGROUND_BRIGHT_YELLOW;
+	case WHITE       :
+		return ANSI_BACKGROUND_BRIGHT_WHITE;
 	default:
 		return "";
 	}
@@ -898,6 +930,55 @@ printXY(int x, int y, RUTIL_STRING msg)
 {
         locate(x, y);
         rutil_print(msg);
+}
+
+/**Enable the alternat console buffer. Saving current console history and preventing the user from scrolling up
+ */
+void enableAlternateBuffer()
+{
+	rutil_print(ANSI_ENABLE_ALTERNATE_BUFFER);
+}
+
+/**Disable the alternate console buffer. Restoring the previous console history and clearing what had been rendered to the alt buffer
+ */
+void disableAlternateBuffer()
+{
+	rutil_print(ANSI_DISABLE_ALTERNATE_BUFFER);
+}
+
+/**Set the text color to a full 24 bit RGB color
+ * @param r red value 0-255
+ * @param g green value 0-255
+ * @param b blue value 0-255
+ */
+	void setColorRGB(int r, int g, int b) {
+	r &= 0xFF;
+	g &= 0xFF;
+	b &= 0xFF;
+#ifdef __cplusplus
+	std::stringstream ss;
+	ss << "\033[38;2;" << r << ";" << g <<";"<< b << "m";
+	rutil_print(ss.str());
+#else
+	char buf[32];
+	sprintf(buf, "\033[38;2;%d;%d;%dm", r, g, b);
+	rutil_print(buf);
+#endif /* __cplusplus */
+}
+
+void setBackgroundColorRGB(int r, int g, int b) {
+	r &= 0xFF;
+	g &= 0xFF;
+	b &= 0xFF;
+#ifdef __cplusplus
+	std::stringstream ss;
+	ss << "\033[48;2;" << r << ";" << g <<";"<< b << "m";
+	rutil_print(ss.str());
+#else
+	char buf[32];
+	sprintf(buf, "\033[48;2;%d;%d;%dm", r, g, b);
+	rutil_print(buf);
+#endif /* __cplusplus */
 }
 
 #ifdef __cplusplus

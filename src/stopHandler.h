@@ -22,6 +22,7 @@ author: jSdCool
 #endif
 
 void (* USR_CTC_BREAK_HANDLER_FUNC)(void);
+bool CTC_BREAK_HANDLER_killAnyway;
 
 #ifdef _WIN32
 	//windows stop catcher
@@ -32,7 +33,7 @@ void (* USR_CTC_BREAK_HANDLER_FUNC)(void);
 			//call the user's function
 			USR_CTC_BREAK_HANDLER_FUNC();
 			//return false to tell windows to stop the program
-			return FALSE;
+			return !CTC_BREAK_HANDLER_killAnyway;
 		//optinaly handel other termination types here
 		default:
 			return FALSE;
@@ -44,16 +45,20 @@ void (* USR_CTC_BREAK_HANDLER_FUNC)(void);
 		//call the user's function
 		USR_CTC_BREAK_HANDLER_FUNC();
 		//stop the program
-		exit(0);
+		if (CTC_BREAK_HANDLER_killAnyway) {
+			exit(0);
+		}
 	}
 #endif
 
-/* this function sets the fucniton to be called in the event of ctrl-c being pressed
-	args: void funct(void) : the function that sould be called when ctrl-c is pressed
-	return: success of the action
+/** this function sets the function to be called in the event of ctrl-c being pressed
+	@param funct: the function that should be called when ctrl-c is pressed
+	@param killAnyway if the program should still be killed after the signal is caught
+	@return: success of the action
 */
-bool setContrlCHandler(void (* funct)(void) ){
+bool setContrlCHandler(void (* funct)(void) , bool killAnyway){
 	USR_CTC_BREAK_HANDLER_FUNC = funct;
+	CTC_BREAK_HANDLER_killAnyway = killAnyway;
 	#ifdef _WIN32
 		//windows handler
 		return SetConsoleCtrlHandler(CBSTOP_CtrlHandler, TRUE);
