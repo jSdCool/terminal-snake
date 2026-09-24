@@ -158,11 +158,13 @@ int main() {
 
 
 		//add the new snake to the screen
-		for(auto & i : snake){
-			screen[i.y*width+i.x] = {getDirectionChar(i.in,i.out),LIGHTGREEN,BLACK};
-		}
 		if(sp.x <=0 || sp.x >=width || sp.y <= 0 || sp.y >= height){
 			gameRunning = false;
+		}
+		if (gameRunning) {
+			for(auto & i : snake){
+				screen[i.y*width+i.x] = {getDirectionChar(i.in,i.out),LIGHTGREEN,BLACK};
+			}
 		}
 		msleep((heading == UP || heading == DOWN)?60:35);
 	}
