@@ -1,4 +1,5 @@
 #include <iostream>
+//apparently the windows only version only lets you set foreground or background at a time, not necessarily both
 #define RUTIL_USE_ANSI
 #include "rogueutil.h"
 #include "stopHandler.h"
@@ -116,7 +117,8 @@ int main() {
 			default:
 				break;
 		}
-		sp.in = snake[0].out;
+		snake[0].out = heading;
+		sp.in = -heading;
 		sp.out = heading;
 		//check to see if the snake has collided to its self
 		for(auto & i : snake){
@@ -135,8 +137,8 @@ int main() {
 				apple.x = rand()%(width-5)+3;
 				apple.y = rand()%(height-5)+3;
 				notValid=false;
-				for(size_t i=0;i<snake.size();i++){
-					if(snake[i].x == apple.x && snake[i].y == apple.y){
+				for(auto & i : snake){
+					if(i.x == apple.x && i.y == apple.y){
 						notValid=true;
 						break;
 					}
@@ -179,6 +181,7 @@ int main() {
 }
 
 void render(ScreenData current[] , ScreenData prev[]){
+	//TODO put these loops in the correct order and color setting optomizations
 	for(int x=0;x<width;x++){
 		for(int y=0;y<height;y++){
 			int index = x + y*width;

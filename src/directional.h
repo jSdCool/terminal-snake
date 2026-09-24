@@ -9,3 +9,5 @@ enum Direction{
 };
 
 std::string getDirectionChar(Direction in, Direction out);
+
+Direction operator-(const Direction &d);

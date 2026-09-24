@@ -73,3 +73,18 @@ std::string getDirectionChar(Direction in, Direction out){
 	}
 	return directionChars[in][out];
 }
+
+Direction operator-(const Direction &d) {
+	switch (d) {
+		case UP:
+			return DOWN;
+		case DOWN:
+			return UP;
+		case LEFT:
+			return RIGHT;
+		case RIGHT:
+			return LEFT;
+		default:
+			return UP;
+	}
+}
