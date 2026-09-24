@@ -6,6 +6,7 @@
 #include <vector>
 #include <thread>
 #include "directional.h"
+#include "inputHandler.h"
 using namespace std;
 using namespace rogueutil;
 
@@ -58,7 +59,7 @@ int main() {
 	stopHandler::setContrlCHandler(&handleStop,false);//register the handler for ctrl c
 	setConsoleTitle("SNAKE!!");
 
-
+	initTerminalInput();
 
 	ScreenData * prevScreen = new ScreenData[height*width];
 	ScreenData * screen = new ScreenData[height*width];
@@ -173,17 +174,17 @@ int main() {
 	resetColor();
 	disableAlternateBuffer();
 	cout << "GAME OVER!! Score:" <<snake.size() << endl;
-	cout << "Press any key to continue...";
 	cout.flush();
 	inputThread.join();
 	cout << endl;
+	resetTerminalInput();
 
 	delete[] screen;
 	delete[] prevScreen;
 }
 
 void render(ScreenData current[] , ScreenData prev[]){
-	//TODO put these loops in the correct order and color setting optomizations
+	//TODO put these loops in the correct order and color setting optimizations
 	for(int x=0;x<width;x++){
 		for(int y=0;y<height;y++){
 			int index = x + y*width;
@@ -200,32 +201,36 @@ void render(ScreenData current[] , ScreenData prev[]){
 }
 
 void inputThreadFunction(void * args){
-	int * headingDirection= (int*)args;
+	int * headingDirection = (int*)args;
 	while(gameRunning){
-		int key = getkey();
+		vector<InputEvent> events = pollTerminalInputEvents();
 		int facAx = *headingDirection == LEFT || *headingDirection == RIGHT ;
-		if((key == KEY_UP || key =='w' || key == 'W')&& facAx==1){
-			*headingDirection=UP;
+		for (InputEvent &event: events) {
+			int key = event.keyPressed;
+			if((key == ARROW_KEY_UP || key =='w' || key == 'W')&& facAx==1){
+				*headingDirection=UP;
+			}
+			if((key == ARROW_KEY_RIGHT || key =='d' || key == 'D')  && facAx==0){
+				*headingDirection=RIGHT;
+			}
+			if((key == ARROW_KEY_DOWN || key =='s' || key == 'S') && facAx==1){
+				*headingDirection=DOWN;
+			}
+			if((key == ARROW_KEY_LEFT || key =='a' || key == 'A')  && facAx==0){
+				*headingDirection=LEFT;
+			}
+			if(key == 'p' || key == 'P'){
+				paused = !paused;
+			}
+			if(key == 'q' || key == 'Q'){
+				gameRunning=false;
+			}
+			if(key == 'h' || key == 'H'){
+				resetColor();
+				gotoxy(1,1);
+				cout << "Arrow Keys / WASD - change direction" << endl << "P - pause" << endl <<"Q - quit"<<endl<<"H - display this message";
+			}
 		}
-		if((key == KEY_RIGHT || key =='d' || key == 'D')  && facAx==0){
-			*headingDirection=RIGHT;
-		}
-		if((key == KEY_DOWN || key =='s' || key == 'S') && facAx==1){
-			*headingDirection=DOWN;
-		}
-		if((key == KEY_LEFT || key =='a' || key == 'A')  && facAx==0){
-			*headingDirection=LEFT;
-		}
-		if(key == 'p' || key == 'P'){
-			paused = !paused;
-		}
-		if(key == 'q' || key == 'Q'){
-			gameRunning=false;
-		}
-		if(key == 'h' || key == 'H'){
-			resetColor();
-			gotoxy(1,1);
-			cout << "Arrow Keys / WASD - change direction" << endl << "P - pause" << endl <<"Q - quit"<<endl<<"H - display this message";
-		}
+		msleep(1);
 	}
 }
