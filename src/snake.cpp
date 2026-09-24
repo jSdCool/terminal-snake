@@ -4,9 +4,10 @@
 #include "rogueutil.h"
 #include "stopHandler.h"
 #include <vector>
-#include <thread>
 #include "directional.h"
 #include "inputHandler.h"
+#include "timeing.h"
+
 using namespace std;
 using namespace rogueutil;
 
@@ -14,7 +15,6 @@ static int width;
 static int height;
 static volatile bool gameRunning=true;
 static bool paused=false;
-thread inputThread;
 
 struct Position{
 	int x;
@@ -42,7 +42,7 @@ void handleStop(){
 }
 
 void render(ScreenData current[] , ScreenData prev[]);
-void inputThreadFunction(void *);
+
 #ifdef _WIN32
 	DWORD WINAPI winThread(LPVOID params);
 #endif
@@ -65,6 +65,8 @@ int main() {
 	ScreenData * screen = new ScreenData[height*width];
 
 	Direction heading = UP;
+	Direction headingLastFrame = UP;
+
 	Position apple{};
 	apple.x=5;
 	apple.y=5;
@@ -81,93 +83,140 @@ int main() {
 	enableAlternateBuffer();
 	hidecursor();
 
-	inputThread = thread(&inputThreadFunction,&heading);
+	shared_ptr<TimeStamp> startOfLastFrame = getNowTimeStamp();
 
-	while(gameRunning){
+	while(gameRunning) {
 		if(paused){
 			msleep(20);
-			continue;
+		}
+
+		//process user inputs
+		vector<InputEvent> events = pollTerminalInputEvents();
+		int facAxis = headingLastFrame == LEFT || headingLastFrame == RIGHT ;
+		for (InputEvent &event: events) {
+			int key = event.keyPressed;
+			bool changedDirection =false;
+			if((key == ARROW_KEY_UP || key =='w' || key == 'W')&& facAxis==1){
+				heading=UP;
+				changedDirection = true;
+			}
+			if((key == ARROW_KEY_RIGHT || key =='d' || key == 'D')  && facAxis==0){
+				heading=RIGHT;
+				changedDirection = true;
+			}
+			if((key == ARROW_KEY_DOWN || key =='s' || key == 'S') && facAxis==1){
+				heading=DOWN;
+				changedDirection = true;
+			}
+			if((key == ARROW_KEY_LEFT || key =='a' || key == 'A')  && facAxis==0){
+				heading=LEFT;
+				changedDirection = true;
+			}
+			if(key == 'p' || key == 'P'){
+				paused = !paused;
+			}
+			if(key == 'q' || key == 'Q'){
+				gameRunning=false;
+			}
+			if(key == 'h' || key == 'H'){
+				resetColor();
+				gotoxy(1,1);
+				cout << "Arrow Keys / WASD - change direction" << endl << "P - pause" << endl <<"Q - quit"<<endl<<"H - display this message";
+			}
+			if (changedDirection) {
+				//update the snake head to point in the correct direction
+				snake[0].out = heading;
+				screen[snake[0].y*width+snake[0].x] = {getDirectionChar(snake[0].in,snake[0].out),LIGHTGREEN,BLACK};
+			}
 		}
 
 		render(screen,prevScreen);
-		//Remove the old snake from the screen
-		for(auto & i : snake){
-			screen[i.y*width+i.x] = {};
-		}
+		long long timeSinceLastFrame = msSince(startOfLastFrame);
+		if ( timeSinceLastFrame >= ((snake[0].in == UP || snake[0].in == DOWN)?60l:35l) && !paused) {
+			startOfLastFrame = getNowTimeStamp();
 
-		//Calculate the new snake
-		Position sp{};
-		Position tmp{};
-		switch(heading){
-			case UP:
-				sp.x = snake[0].x;
-				sp.y = snake[0].y-1;
-				break;
-			case RIGHT:
-				sp.x = snake[0].x+1;
-				sp.y = snake[0].y;
-				break;
-			case DOWN:
-				sp.x = snake[0].x;
-				sp.y = snake[0].y+1;
-				break;
-			case LEFT:
-				sp.x = snake[0].x-1;
-				sp.y = snake[0].y;
-				break;
-			default:
-				break;
-		}
-		snake[0].out = heading;
-		sp.in = -heading;
-		sp.out = heading;
-		//check to see if the snake has collided to its self
-		for(auto & i : snake){
-			if(i.x == sp.x && i.y == sp.y){
-				gameRunning=false;
-				break;
+			headingLastFrame = heading;
+
+			//Remove the old snake from the screen
+			for(auto & i : snake){
+				screen[i.y*width+i.x] = {};
 			}
-		}
 
-		//if the head is on the apple
-		if(snake[0].x == apple.x && snake[0].y == apple.y){
-			Position np{};
-			snake.push_back(np);
-			bool notValid = true;
-			while(notValid){
-				apple.x = rand()%(width-5)+3;
-				apple.y = rand()%(height-5)+3;
-				notValid=false;
-				for(auto & i : snake){
-					if(i.x == apple.x && i.y == apple.y){
-						notValid=true;
-						break;
-					}
+			//Calculate the new snake
+			Position sp{};
+			Position tmp{};
+			switch(heading){
+				case UP:
+					sp.x = snake[0].x;
+					sp.y = snake[0].y-1;
+					break;
+				case RIGHT:
+					sp.x = snake[0].x+1;
+					sp.y = snake[0].y;
+					break;
+				case DOWN:
+					sp.x = snake[0].x;
+					sp.y = snake[0].y+1;
+					break;
+				case LEFT:
+					sp.x = snake[0].x-1;
+					sp.y = snake[0].y;
+					break;
+				default:
+					break;
+			}
+			snake[0].out = heading;
+			sp.in = -heading;
+			sp.out = heading;
+			//check to see if the snake has collided to its self
+			for(auto & i : snake){
+				if(i.x == sp.x && i.y == sp.y){
+					gameRunning=false;
+					break;
 				}
 			}
-			screen[apple.y*width+apple.x]={" ",WHITE,RED};
-		}
 
-		tmp = snake[0];
-		snake[0] = sp;
-		for(size_t i=1;i<snake.size();i++){
-			Position tmp2 = tmp;
-			tmp = snake[i];
-			snake[i]=tmp2;
-		}
+			//if the head is on the apple
+			if(snake[0].x == apple.x && snake[0].y == apple.y){
+				Position np{};
+				snake.push_back(np);
+				bool notValid = true;
+				while(notValid){
+					apple.x = rand()%(width-5)+3;
+					apple.y = rand()%(height-5)+3;
+					notValid=false;
+					for(auto & i : snake){
+						if(i.x == apple.x && i.y == apple.y){
+							notValid=true;
+							break;
+						}
+					}
+				}
+				screen[apple.y*width+apple.x]={" ",WHITE,RED};
+			}
+
+			tmp = snake[0];
+			snake[0] = sp;
+			for(size_t i=1;i<snake.size();i++){
+				Position tmp2 = tmp;
+				tmp = snake[i];
+				snake[i]=tmp2;
+			}
 
 
 
-		//add the new snake to the screen
-		if(sp.x <=0 || sp.x >=width || sp.y <= 0 || sp.y >= height){
-			gameRunning = false;
-		}
-		if (gameRunning) {
-			for(auto & i : snake){
-				screen[i.y*width+i.x] = {getDirectionChar(i.in,i.out),LIGHTGREEN,BLACK};
+			//add the new snake to the screen
+			if(sp.x <=0 || sp.x >=width || sp.y <= 0 || sp.y >= height){
+				gameRunning = false;
+			}
+			if (gameRunning) {
+				for(auto & i : snake){
+					screen[i.y*width+i.x] = {getDirectionChar(i.in,i.out),LIGHTGREEN,BLACK};
+				}
 			}
 		}
-		msleep((heading == UP || heading == DOWN)?60:35);
+
+		msleep(1);
 	}
 
 	showcursor();
@@ -175,7 +224,6 @@ int main() {
 	disableAlternateBuffer();
 	cout << "GAME OVER!! Score:" <<snake.size() << endl;
 	cout.flush();
-	inputThread.join();
 	cout << endl;
 	resetTerminalInput();
 
@@ -198,39 +246,4 @@ void render(ScreenData current[] , ScreenData prev[]){
 		}
 	}
 	cout.flush();
-}
-
-void inputThreadFunction(void * args){
-	int * headingDirection = (int*)args;
-	while(gameRunning){
-		vector<InputEvent> events = pollTerminalInputEvents();
-		int facAx = *headingDirection == LEFT || *headingDirection == RIGHT ;
-		for (InputEvent &event: events) {
-			int key = event.keyPressed;
-			if((key == ARROW_KEY_UP || key =='w' || key == 'W')&& facAx==1){
-				*headingDirection=UP;
-			}
-			if((key == ARROW_KEY_RIGHT || key =='d' || key == 'D')  && facAx==0){
-				*headingDirection=RIGHT;
-			}
-			if((key == ARROW_KEY_DOWN || key =='s' || key == 'S') && facAx==1){
-				*headingDirection=DOWN;
-			}
-			if((key == ARROW_KEY_LEFT || key =='a' || key == 'A')  && facAx==0){
-				*headingDirection=LEFT;
-			}
-			if(key == 'p' || key == 'P'){
-				paused = !paused;
-			}
-			if(key == 'q' || key == 'Q'){
-				gameRunning=false;
-			}
-			if(key == 'h' || key == 'H'){
-				resetColor();
-				gotoxy(1,1);
-				cout << "Arrow Keys / WASD - change direction" << endl << "P - pause" << endl <<"Q - quit"<<endl<<"H - display this message";
-			}
-		}
-		msleep(1);
-	}
 }
