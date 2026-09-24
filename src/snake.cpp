@@ -1,8 +1,10 @@
 #include <iostream>
+#define RUTIL_USE_ANSI
 #include "rogueutil.h"
 #include "stopHandler.h"
 #include <vector>
 #include <thread>
+#include "directional.h"
 using namespace std;
 using namespace rogueutil;
 
@@ -12,17 +14,32 @@ static volatile bool gameRunning=true;
 static bool paused=false;
 thread inputThread;
 
-typedef struct position{
+struct Position{
 	int x;
 	int y;
-}position;
+	Direction in;
+	Direction out;
+};
+
+struct ScreenData {
+	string glyph = " ";
+	int color = WHITE;
+	int bgColor = BLACK;
+
+	bool operator==(const ScreenData &other) const {
+		return other.glyph == glyph && other.color == color && other.bgColor == bgColor;
+	}
+	bool operator!=(const ScreenData &other) const {
+		return !(*this == other);
+	}
+};
 
 void handleStop(){
 	gameRunning=false;
 	//handle stop here
 }
 
-void render(char current[] , char prev[]);
+void render(ScreenData current[] , ScreenData prev[]);
 void inputThreadFunction(void *);
 #ifdef _WIN32
 	DWORD WINAPI winThread(LPVOID params);
@@ -40,30 +57,25 @@ int main() {
 	stopHandler::setContrlCHandler(&handleStop,false);//register the handler for ctrl c
 	setConsoleTitle("SNAKE!!");
 
-	//Microsoft visual c++ compiler does not allow arrays to be defined with variables
 
-	char * prevScreen = (char *)malloc(height*width*sizeof(char));
 
-	//y, x
-	char * screen = (char *)malloc(height*width*sizeof(char));
-	for(int i=0;i<width;i++){
-		for(int j=0;j<height;j++){
-			screen[j*width+i] = '.';
-		}
-	}
+	ScreenData * prevScreen = new ScreenData[height*width];
+	ScreenData * screen = new ScreenData[height*width];
 
-	int heading =0;
-	position apple;
+	Direction heading = UP;
+	Position apple{};
 	apple.x=5;
 	apple.y=5;
-	vector<position> snake;
-	position p;
+	vector<Position> snake;
+	Position p{};
 	p.x=width/2;
 	p.y=height/2;
 	snake.push_back(p);
 
-	screen[apple.y*width+apple.x] = 'A';
-	screen[p.y*width+p.x] = 'S';
+	//add the initial apple to the screen
+	screen[apple.y*width+apple.x] = {" ",WHITE,RED};
+	//add the initial snake to the screen
+	screen[p.y*width+p.x] = {getDirectionChar(DOWN,UP), GREEN, BLACK};
 	enableAlternateBuffer();
 	hidecursor();
 
@@ -77,33 +89,38 @@ int main() {
 
 		render(screen,prevScreen);
 		//Remove the old snake from the screen
-		for(size_t i=0;i<snake.size();i++){
-			screen[snake[i].y*width+snake[i].x] = '.';
+		for(auto & i : snake){
+			screen[i.y*width+i.x] = {};
 		}
 
 		//Calculate the new snake
-		position sp;
-		position tmp;
+		Position sp{};
+		Position tmp{};
 		switch(heading){
-			case 0:
+			case UP:
 				sp.x = snake[0].x;
 				sp.y = snake[0].y-1;
 				break;
-			case 1:
+			case RIGHT:
 				sp.x = snake[0].x+1;
 				sp.y = snake[0].y;
 				break;
-			case 2:
+			case DOWN:
 				sp.x = snake[0].x;
 				sp.y = snake[0].y+1;
 				break;
-			case 3:
+			case LEFT:
 				sp.x = snake[0].x-1;
 				sp.y = snake[0].y;
 				break;
-		}//check to see if the snake has collided to its self
-		for(size_t i=0;i<snake.size();i++){
-			if(snake[i].x == sp.x && snake[i].y == sp.y){
+			default:
+				break;
+		}
+		sp.in = snake[0].out;
+		sp.out = heading;
+		//check to see if the snake has collided to its self
+		for(auto & i : snake){
+			if(i.x == sp.x && i.y == sp.y){
 				gameRunning=false;
 				break;
 			}
@@ -111,7 +128,7 @@ int main() {
 
 		//if the head is on the apple
 		if(snake[0].x == apple.x && snake[0].y == apple.y){
-			position np;
+			Position np{};
 			snake.push_back(np);
 			bool notValid = true;
 			while(notValid){
@@ -125,13 +142,13 @@ int main() {
 					}
 				}
 			}
-			screen[apple.y*width+apple.x]='A';
+			screen[apple.y*width+apple.x]={" ",WHITE,RED};
 		}
 
 		tmp = snake[0];
 		snake[0] = sp;
 		for(size_t i=1;i<snake.size();i++){
-			position tmp2 = tmp;
+			Position tmp2 = tmp;
 			tmp = snake[i];
 			snake[i]=tmp2;
 		}
@@ -139,13 +156,13 @@ int main() {
 
 
 		//add the new snake to the screen
-		for(size_t i=0;i<snake.size();i++){
-			screen[snake[i].y*width+snake[i].x] = 'S';
+		for(auto & i : snake){
+			screen[i.y*width+i.x] = {getDirectionChar(i.in,i.out),LIGHTGREEN,BLACK};
 		}
-		if(sp.x<=0 || sp.x >=width || sp.y <= 0 || sp.y >= height){
+		if(sp.x <=0 || sp.x >=width || sp.y <= 0 || sp.y >= height){
 			gameRunning = false;
 		}
-		msleep((heading % 2 ==0)?60:35);
+		msleep((heading == UP || heading == DOWN)?60:35);
 	}
 
 	showcursor();
@@ -156,39 +173,21 @@ int main() {
 	cout.flush();
 	inputThread.join();
 	cout << endl;
-	//cout << snake[0].x <<" " << snake[0].y << endl;
 
+	delete[] screen;
+	delete[] prevScreen;
 }
 
-void render(char current[] , char prev[]){
+void render(ScreenData current[] , ScreenData prev[]){
 	for(int x=0;x<width;x++){
 		for(int y=0;y<height;y++){
 			int index = x + y*width;
 			if(current[index] != prev[index]){
 				prev[index] = current[index];
-				switch(current[index]){
-					case 'S':
-						gotoxy(x,y);
-						if(x==0 || x == width-1 || y == 0 || y == height-1){
-							setBackgroundColor(BROWN);
-						}else if(x <= 2 || x >= width-3 || y <= 3 || y >= height-3){
-							setBackgroundColor(YELLOW);
-						}else{
-							setBackgroundColor(GREEN);
-						}
-						cout << " ";
-						break;
-					case 'A':
-						gotoxy(x,y);
-						setBackgroundColor(RED);
-						cout << " ";
-						break;
-					case '.':
-						gotoxy(x,y);
-						resetColor();
-						cout << " ";
-
-				}
+				gotoxy(x,y);
+				setBackgroundColor(current[index].bgColor);
+				setColor(current[index].color);
+				cout << current[index].glyph;
 			}
 		}
 	}
@@ -199,18 +198,18 @@ void inputThreadFunction(void * args){
 	int * headingDirection= (int*)args;
 	while(gameRunning){
 		int key = getkey();
-		int facAx = *headingDirection%2;
+		int facAx = *headingDirection == LEFT || *headingDirection == RIGHT ;
 		if((key == KEY_UP || key =='w' || key == 'W')&& facAx==1){
-			*headingDirection=0;
+			*headingDirection=UP;
 		}
 		if((key == KEY_RIGHT || key =='d' || key == 'D')  && facAx==0){
-			*headingDirection=1;
+			*headingDirection=RIGHT;
 		}
 		if((key == KEY_DOWN || key =='s' || key == 'S') && facAx==1){
-			*headingDirection=2;
+			*headingDirection=DOWN;
 		}
 		if((key == KEY_LEFT || key =='a' || key == 'A')  && facAx==0){
-			*headingDirection=3;
+			*headingDirection=LEFT;
 		}
 		if(key == 'p' || key == 'P'){
 			paused = !paused;
