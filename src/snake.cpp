@@ -92,23 +92,22 @@ int main() {
 
 		//process user inputs
 		vector<InputEvent> events = pollTerminalInputEvents();
-		int facAxis = headingLastFrame == LEFT || headingLastFrame == RIGHT ;
 		for (InputEvent &event: events) {
 			int key = event.keyPressed;
 			bool changedDirection =false;
-			if((key == ARROW_KEY_UP || key =='w' || key == 'W')&& facAxis==1){
+			if((key == ARROW_KEY_UP || key =='w' || key == 'W') && headingLastFrame != DOWN){
 				heading=UP;
 				changedDirection = true;
 			}
-			if((key == ARROW_KEY_RIGHT || key =='d' || key == 'D')  && facAxis==0){
+			if((key == ARROW_KEY_RIGHT || key =='d' || key == 'D')  && headingLastFrame != LEFT){
 				heading=RIGHT;
 				changedDirection = true;
 			}
-			if((key == ARROW_KEY_DOWN || key =='s' || key == 'S') && facAxis==1){
+			if((key == ARROW_KEY_DOWN || key =='s' || key == 'S') && headingLastFrame != UP){
 				heading=DOWN;
 				changedDirection = true;
 			}
-			if((key == ARROW_KEY_LEFT || key =='a' || key == 'A')  && facAxis==0){
+			if((key == ARROW_KEY_LEFT || key =='a' || key == 'A')  && headingLastFrame != RIGHT){
 				heading=LEFT;
 				changedDirection = true;
 			}
