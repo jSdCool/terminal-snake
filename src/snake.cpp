@@ -232,15 +232,21 @@ int main() {
 }
 
 void render(ScreenData current[] , ScreenData prev[]){
-	//TODO put these loops in the correct order and color setting optimizations
-	for(int x=0;x<width;x++){
-		for(int y=0;y<height;y++){
+	int fgColor = 30;
+	int bgColor = 30;
+	for(int y=0;y<height;y++) {
+		for(int x=0;x<width;x++) {
 			int index = x + y*width;
-			if(current[index] != prev[index]){
+			if(current[index] != prev[index]) {
 				prev[index] = current[index];
 				gotoxy(x,y);
-				setBackgroundColor(current[index].bgColor);
-				setColor(current[index].color);
+				if (current[index].bgColor != bgColor) {
+					setBackgroundColor(current[index].bgColor);
+					bgColor = current[index].bgColor;
+				}
+				if (current[index].color != fgColor) {
+					setColor(current[index].color);
+				}
 				cout << current[index].glyph;
 			}
 		}
