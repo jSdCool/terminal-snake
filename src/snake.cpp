@@ -7,6 +7,7 @@
 #include "directional.h"
 #include "inputHandler.h"
 #include "timeing.h"
+#include <argparse/argparse.hpp>
 
 using namespace std;
 using namespace rogueutil;
@@ -47,7 +48,30 @@ void render(ScreenData current[] , ScreenData prev[]);
 	DWORD WINAPI winThread(LPVOID params);
 #endif
 
-int main() {
+int main(int argc, char ** argv) {
+
+	int delayMultiplier = 1;
+
+	argparse::ArgumentParser args("snake");
+	args.add_argument("-d","--delay")
+	.help("Movement delay time multiplayer")
+	.scan<'i',int>().store_into(delayMultiplier);
+	args.add_argument("-c","--checkerBoard")
+	.help("Display a checkerboard background instead of just black")
+	.flag();
+
+	args.add_description("A simple snake game playable in your terminal\nControls:\narrow keys / WASD: change direction\nq: quit\np: pause\nh: display help text");
+
+	try {
+		args.parse_args(argc,argv);
+	} catch (const std::exception& err) {
+		std::cerr << err.what() << std::endl;
+		std::cerr << args;
+		return EXIT_FAILURE;
+	}
+
+	cout << delayMultiplier<<endl;
+
 	width = tcols();
 	height = trows();
 	//terminal size check;
@@ -131,7 +155,7 @@ int main() {
 
 		render(screen,prevScreen);
 		long long timeSinceLastFrame = msSince(startOfLastFrame);
-		if ( timeSinceLastFrame >= ((snake[0].in == UP || snake[0].in == DOWN)?60l:35l) && !paused) {
+		if ( timeSinceLastFrame >= delayMultiplier*((snake[0].in == UP || snake[0].in == DOWN)?60l:35l) && !paused) {
 			startOfLastFrame = getNowTimeStamp();
 
 			headingLastFrame = heading;
