@@ -37,20 +37,27 @@ struct ScreenData {
 	}
 };
 
-void handleStop(){
+static void handleStop(){
 	gameRunning=false;
 	//handle stop here
 }
 
-void render(ScreenData current[] , ScreenData prev[]);
+static void render(ScreenData current[] , ScreenData prev[]);
 
-#ifdef _WIN32
-	DWORD WINAPI winThread(LPVOID params);
-#endif
+static color_code getCheckerBoardColor(const bool checkerBoard, const int x, const int y) {
+	if (checkerBoard) {
+		if ((x/3+y/3)%2 ==0) {
+			return BLACK;
+		}
+		return MAGENTA;
+	}
+	return BLACK;
+}
 
 int main(int argc, char ** argv) {
 
 	int delayMultiplier = 1;
+	bool checkerboardBackground = false;
 
 	argparse::ArgumentParser args("snake");
 	args.add_argument("-d","--delay")
@@ -58,7 +65,8 @@ int main(int argc, char ** argv) {
 	.scan<'i',int>().store_into(delayMultiplier);
 	args.add_argument("-c","--checkerBoard")
 	.help("Display a checkerboard background instead of just black")
-	.flag();
+	.flag()
+	.store_into(checkerboardBackground);
 
 	args.add_description("A simple snake game playable in your terminal\nControls:\narrow keys / WASD: change direction\nq: quit\np: pause\nh: display help text");
 
@@ -69,8 +77,6 @@ int main(int argc, char ** argv) {
 		std::cerr << args;
 		return EXIT_FAILURE;
 	}
-
-	cout << delayMultiplier<<endl;
 
 	width = tcols();
 	height = trows();
@@ -85,8 +91,16 @@ int main(int argc, char ** argv) {
 
 	initTerminalInput();
 
-	ScreenData * prevScreen = new ScreenData[height*width];
-	ScreenData * screen = new ScreenData[height*width];
+	auto prevScreen = new ScreenData[height*width];
+	auto screen = new ScreenData[height*width];
+
+	if (checkerboardBackground) {
+		for (int y=0;y<height;y++) {
+			for (int x=0;x<width;x++) {
+				screen[x+y*width] = {" ",WHITE,getCheckerBoardColor(true,x,y)};
+			}
+		}
+	}
 
 	Direction heading = UP;
 	Direction headingLastFrame = UP;
@@ -149,7 +163,7 @@ int main(int argc, char ** argv) {
 			if (changedDirection) {
 				//update the snake head to point in the correct direction
 				snake[0].out = heading;
-				screen[snake[0].y*width+snake[0].x] = {getDirectionChar(snake[0].in,snake[0].out),LIGHTGREEN,BLACK};
+				screen[snake[0].y*width+snake[0].x] = {getDirectionChar(snake[0].in,snake[0].out),LIGHTGREEN,getCheckerBoardColor(checkerboardBackground,snake[0].x,snake[0].y)};
 			}
 		}
 
@@ -162,7 +176,7 @@ int main(int argc, char ** argv) {
 
 			//Remove the old snake from the screen
 			for(auto & i : snake){
-				screen[i.y*width+i.x] = {};
+				screen[i.y*width+i.x] = {" ",WHITE,getCheckerBoardColor(checkerboardBackground,i.x,i.y)};
 			}
 
 			//Calculate the new snake
@@ -234,7 +248,7 @@ int main(int argc, char ** argv) {
 			}
 			if (gameRunning) {
 				for(auto & i : snake){
-					screen[i.y*width+i.x] = {getDirectionChar(i.in,i.out),LIGHTGREEN,BLACK};
+					screen[i.y*width+i.x] = {getDirectionChar(i.in,i.out),LIGHTGREEN,getCheckerBoardColor(checkerboardBackground,i.x,i.y)};
 				}
 			}
 		}
